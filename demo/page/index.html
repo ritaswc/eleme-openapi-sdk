@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>欢迎使用智能配送助手</title>
+    <script src="https://static11.elemecdn.com/eleme/napos.order.fe.melody/jssdk.js" type="text/javascript" charset="utf-8"></script>
+</head>
+<body>
+<div class="w1000">
+    <div class="userinfo">
+        <p>当前登录用户ID为<span id="userId">{{ userId }}</span></p>
+        <p>当前店铺名称为<span id="shopName">{{ shopName }}</span></p>
+    </div>
+    <div class="icon-box">
+        <img src="https://fuss10.elemecdn.com/4/e7/225b8c9ae6b02c10de010b00f9504png.png" alt="">
+        </br>
+        智能配送助手
+    </div>
+    <dl>
+        <dt class="abc">【智能配送助手】由【饿了么】进行开发</dt>
+        <dd>
+            饿了么商家开放平台作为一个服务集成平台，致力于满足商户的多样需求，提供合作伙伴更多的平台资源，服务商户接入，提供给商户更丰富的经营能力。同时，开放平台将通过提供一系列非业务性的，例如安全保障、服务监控告警、日志分析统计等解决方案，让开发者专注于业务系统的开发，降低接入者的开发成本。
+        </dd>
+    </dl>
+</div>
+
+<style>
+    dt,dd{
+        margin: 0;
+    }
+    .w1000{
+        width: 1000px;
+        margin: 0 auto;
+        display: none
+    }
+    .userinfo{
+        text-align: center;
+    }
+    .icon-box{
+        text-align: center;
+    }
+    .icon-box img{
+        width: 200px;
+        height: 200px;
+    }
+</style>
+</body>
+<script>
+    function post(url, param) {
+        return new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest()
+            xhr.open('POST',url, true)
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200 || xhr.status === 1223) {
+                        // 这边双方约定返回json字符串
+                        var response = JSON.parse(xhr.responseText)
+                        if (response.error) {
+                            reject(response.error)
+                        } else {
+                            resolve(response.result)
+                        }
+                    }
+                }
+            }
+            xhr.setRequestHeader('content-type', 'application/json')
+            xhr.send(JSON.stringify(param))
+        })
+    }
+
+    // 整理search成对象
+    function formatSearch(search) {
+        var result = {}
+        if (search === '') {
+            return result
+        }
+        // delte ?
+        search = search.substring(1)
+        // 将?key=value 拆分成 {key: value}的形式
+        search.split('&').forEach(function(item) {
+            var searchArray = item.split('=')
+            result[searchArray[0]] = searchArray[1]
+        })
+        return result
+
+    }
+
+    function codeCallback() {
+        document.querySelector('.w1000').style.display = 'block'
+    }
+
+    function showErrorMessage(mes) {
+        var h1 = document.createElement('h1')
+        h1.style.textAlign = 'center'
+        h1.textContent = mes
+        document.body.appendChild(h1)
+    }
+
+    function errorCallBack(searchParam) {
+        var errorText = decodeURI(searchParam.error_description || '授权失败')
+        showErrorMessage(errorText)
+    }
+
+
+    function normalCallBack() {
+        // 必须在客户端打开
+        if (!eleme.userAgent.isClient) {
+            showErrorMessage('请在napos客户端打开')
+        } else {
+            Promise.all([
+                eleme.getUserId(),
+                eleme.getCurrentShopId()
+            ]).then(function (result) {
+                var userId = result[0]
+                var shopId = result[1]
+                post('/get_user_info.php', {
+                    userId: userId,
+                    shopId: shopId
+                }).then(result => {
+                    if (result.OAuthUrl) {
+                    location.href = result.OAuthUrl
+                } else {
+                    var shopName = result.shopName
+                    document.querySelector('#userId').innerHTML = userId
+                    document.querySelector('#shopName').innerHTML = shopName
+                    document.querySelector('.w1000').style.display = 'block'
+                }
+            }).catch(e => {
+                    showErrorMessage(e)
+            })
+            })
+        }
+    }
+
+    window.onload = function() {
+        var content = document.querySelector('.w1000')
+        var search = window.location.search
+        var searchParam = formatSearch(search)
+        // 假如有code，则是后端渲染
+        if (searchParam.code) {
+            codeCallback()
+        } else if (searchParam.error) {
+            errorCallBack(searchParam)
+        } else {
+            normalCallBack()
+        }
+    }
+</script>
+</html>
